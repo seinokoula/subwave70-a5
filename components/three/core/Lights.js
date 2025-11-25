@@ -1,26 +1,36 @@
 import * as THREE from 'three';
+import { getDevicePerformanceLevel } from '../../../utils/deviceDetection';
 
 export default class LightsManager {
   constructor(scene) {
     this.scene = scene;
     this.lights = [];
+    this.performanceLevel = getDevicePerformanceLevel();
 
     this.setupLights();
   }
 
   setupLights() {
-
-    const ambientLight = new THREE.AmbientLight(0x330066, 0.7);
+    const ambientIntensity = this.performanceLevel === 'low' ? 0.9 : 0.7;
+    const ambientLight = new THREE.AmbientLight(0x330066, ambientIntensity);
     this.scene.add(ambientLight);
     this.lights.push(ambientLight);
 
     const directionalLight = new THREE.DirectionalLight(0xff3366, 1.0);
     directionalLight.position.set(10, 20, 10);
-    directionalLight.castShadow = true;
+    directionalLight.castShadow = this.performanceLevel !== 'low';
 
+    let shadowMapSize;
+    if (this.performanceLevel === 'low') {
+      shadowMapSize = 512;
+    } else if (this.performanceLevel === 'medium') {
+      shadowMapSize = 1024;
+    } else {
+      shadowMapSize = 2048;
+    }
 
-    directionalLight.shadow.mapSize.width = 2048;
-    directionalLight.shadow.mapSize.height = 2048;
+    directionalLight.shadow.mapSize.width = shadowMapSize;
+    directionalLight.shadow.mapSize.height = shadowMapSize;
     directionalLight.shadow.camera.near = 0.5;
     directionalLight.shadow.camera.far = 50;
     directionalLight.shadow.camera.left = -20;
@@ -38,12 +48,12 @@ export default class LightsManager {
     this.scene.add(roadLight.target);
     this.lights.push(roadLight);
 
-
-    this.addNeonSpots();
+    if (this.performanceLevel !== 'low') {
+      this.addNeonSpots();
+    }
   }
 
   addNeonSpots() {
-
     const cyanSpot = new THREE.SpotLight(0x00ffff, 1.5, 50, Math.PI / 6, 0.5, 1);
     cyanSpot.position.set(-15, 10, 0);
     cyanSpot.target.position.set(-5, 0, 0);

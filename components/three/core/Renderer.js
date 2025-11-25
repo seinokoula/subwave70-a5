@@ -1,19 +1,36 @@
 import * as THREE from 'three';
+import { isMobileDevice, getDevicePerformanceLevel } from '../../../utils/deviceDetection';
 
 export default class RendererManager {
   constructor(container) {
+    const performanceLevel = getDevicePerformanceLevel();
+    const isMobile = isMobileDevice();
+
     this.renderer = new THREE.WebGLRenderer({
-      antialias: true,
+      antialias: performanceLevel === 'high',
       alpha: true,
-      powerPreference: "high-performance"
+      powerPreference: isMobile ? "default" : "high-performance",
+      stencil: false,
+      depth: true
     });
 
-    this.renderer.setPixelRatio(window.devicePixelRatio);
+    let pixelRatio = window.devicePixelRatio;
+    if (performanceLevel === 'low') {
+      pixelRatio = Math.min(pixelRatio, 1);
+    } else if (performanceLevel === 'medium') {
+      pixelRatio = Math.min(pixelRatio, 1.5);
+    } else {
+      pixelRatio = Math.min(pixelRatio, 2);
+    }
+
+    this.renderer.setPixelRatio(pixelRatio);
     this.renderer.setSize(container.clientWidth, container.clientHeight);
 
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.enabled = performanceLevel !== 'low';
+    this.renderer.shadowMap.type = performanceLevel === 'high'
+      ? THREE.PCFSoftShadowMap
+      : THREE.BasicShadowMap;
 
     container.appendChild(this.renderer.domElement);
 

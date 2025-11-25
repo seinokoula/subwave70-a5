@@ -4,17 +4,30 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
+import { getDevicePerformanceLevel } from '../../utils/deviceDetection';
 
 export default class PostProcessingManager {
   constructor(renderer, scene, camera) {
     this.renderer = renderer;
     this.scene = scene;
     this.camera = camera;
+    this.performanceLevel = getDevicePerformanceLevel();
 
     this.composer = new EffectComposer(renderer);
-    this.bloomIntensity = 0.5;
-    this.maxBloomIntensity = 0.9;
-    this.bloomFadeSpeed = 0.001;
+
+    if (this.performanceLevel === 'low') {
+      this.bloomIntensity = 0.3;
+      this.maxBloomIntensity = 0.5;
+      this.bloomFadeSpeed = 0.002;
+    } else if (this.performanceLevel === 'medium') {
+      this.bloomIntensity = 0.4;
+      this.maxBloomIntensity = 0.7;
+      this.bloomFadeSpeed = 0.0015;
+    } else {
+      this.bloomIntensity = 0.5;
+      this.maxBloomIntensity = 0.9;
+      this.bloomFadeSpeed = 0.001;
+    }
 
     this.resizeHandler = this.handleResize.bind(this);
 
@@ -25,54 +38,63 @@ export default class PostProcessingManager {
   }
 
   setupPasses() {
-
     const renderPass = new RenderPass(this.scene, this.camera);
     this.composer.addPass(renderPass);
 
+    const bloomResolution = this.performanceLevel === 'low'
+      ? new THREE.Vector2(window.innerWidth * 0.5, window.innerHeight * 0.5)
+      : new THREE.Vector2(window.innerWidth, window.innerHeight);
+
     this.bloomPass = new UnrealBloomPass(
-      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      bloomResolution,
       this.bloomIntensity,
       0.3,
       0.9
     );
     this.composer.addPass(this.bloomPass);
 
-    const scanlinePass = new ShaderPass({
-      uniforms: {
-        tDiffuse: { value: null },
-        scanlineIntensity: { value: 0.05 },
-        scanlineCount: { value: 600 }
-      },
-      vertexShader: `
-      varying vec2 vUv;
-      void main() {
-        vUv = uv;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
-      fragmentShader: `
-      uniform sampler2D tDiffuse;
-      uniform float scanlineIntensity;
-      uniform float scanlineCount;
-      varying vec2 vUv;
-      
-      void main() {
-        vec4 color = texture2D(tDiffuse, vUv);
-        float scanline = sin(vUv.y * scanlineCount) * scanlineIntensity;
-        color.rgb -= scanline;
-        gl_FragColor = color;
-      }
-    `
-    });
-    this.composer.addPass(scanlinePass);
+    if (this.performanceLevel !== 'low') {
+      const scanlineIntensity = this.performanceLevel === 'medium' ? 0.03 : 0.05;
+      const scanlineCount = this.performanceLevel === 'medium' ? 400 : 600;
 
-    const fxaaPass = new ShaderPass(FXAAShader);
-    fxaaPass.uniforms.resolution.value.set(
-      1 / window.innerWidth,
-      1 / window.innerHeight
-    );
-    this.composer.addPass(fxaaPass);
+      const scanlinePass = new ShaderPass({
+        uniforms: {
+          tDiffuse: { value: null },
+          scanlineIntensity: { value: scanlineIntensity },
+          scanlineCount: { value: scanlineCount }
+        },
+        vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+        fragmentShader: `
+        uniform sampler2D tDiffuse;
+        uniform float scanlineIntensity;
+        uniform float scanlineCount;
+        varying vec2 vUv;
 
+        void main() {
+          vec4 color = texture2D(tDiffuse, vUv);
+          float scanline = sin(vUv.y * scanlineCount) * scanlineIntensity;
+          color.rgb -= scanline;
+          gl_FragColor = color;
+        }
+      `
+      });
+      this.composer.addPass(scanlinePass);
+    }
+
+    if (this.performanceLevel === 'high') {
+      const fxaaPass = new ShaderPass(FXAAShader);
+      fxaaPass.uniforms.resolution.value.set(
+        1 / window.innerWidth,
+        1 / window.innerHeight
+      );
+      this.composer.addPass(fxaaPass);
+    }
   }
 
   handleResize() {

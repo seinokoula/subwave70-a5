@@ -38,11 +38,34 @@ export default function Home() {
       }
     };
 
+    const handleTouch = (e) => {
+      if (!containerRef.current || e.target.tagName === 'BUTTON') return;
+
+      const touch = e.touches[0] || e.changedTouches[0];
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const touchX = touch.clientX;
+      const screenCenterX = containerRect.left + containerRect.width / 2;
+
+      if (touchX < screenCenterX) {
+        moveCarLeft();
+      } else {
+        moveCarRight();
+      }
+    };
+
     window.addEventListener('keydown', handleKeyDown);
+    if (containerRef.current) {
+      containerRef.current.addEventListener('touchstart', handleTouch);
+    }
+
+    const currentContainer = containerRef.current;
 
     return () => {
       document.removeEventListener('touchmove', preventDefault);
       window.removeEventListener('keydown', handleKeyDown);
+      if (currentContainer) {
+        currentContainer.removeEventListener('touchstart', handleTouch);
+      }
     };
   }, [moveCarLeft, moveCarRight]);
 

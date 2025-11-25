@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
+import { getDevicePerformanceLevel } from '../../utils/deviceDetection';
 
 export default class ObstacleManager {
   constructor(scene, road, preloadedModels = {}) {
@@ -7,6 +8,7 @@ export default class ObstacleManager {
     this.road = road;
     this.obstacles = [];
     this.preloadedModels = preloadedModels;
+    this.performanceLevel = getDevicePerformanceLevel();
 
     this.obstacleTypes = [
       { type: 'police_officer', modelPath: '/assets/police_officer.obj', scale: [1.5, 1.5, 1.5], color: 0x3366FF },
@@ -17,8 +19,21 @@ export default class ObstacleManager {
     this.models = {};
     this.lanePositions = road.getLanePositions();
     this.spawnDistance = 150;
-    this.minSpawnInterval = 1000;
-    this.maxSpawnInterval = 3000;
+
+    if (this.performanceLevel === 'low') {
+      this.minSpawnInterval = 1500;
+      this.maxSpawnInterval = 4000;
+      this.maxObstacles = 3;
+    } else if (this.performanceLevel === 'medium') {
+      this.minSpawnInterval = 1200;
+      this.maxSpawnInterval = 3500;
+      this.maxObstacles = 5;
+    } else {
+      this.minSpawnInterval = 1000;
+      this.maxSpawnInterval = 3000;
+      this.maxObstacles = 8;
+    }
+
     this.lastSpawnTime = 0;
 
     this.init();
@@ -120,6 +135,9 @@ export default class ObstacleManager {
   }
 
   spawnObstacle() {
+    if (this.obstacles.length >= this.maxObstacles) {
+      return;
+    }
 
     const obstacleType = this.obstacleTypes[Math.floor(Math.random() * this.obstacleTypes.length)];
 

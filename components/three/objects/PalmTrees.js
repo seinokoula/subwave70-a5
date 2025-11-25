@@ -1,5 +1,6 @@
 
 import * as THREE from 'three';
+import { getDevicePerformanceLevel } from '../../utils/deviceDetection';
 
 export default class PalmTrees {
   constructor(scene, road, preloadedModel = null) {
@@ -8,9 +9,21 @@ export default class PalmTrees {
     this.palmTrees = [];
     this.preloadedModel = preloadedModel;
     this.roadWidth = road.roadWidth;
-    this.spacing = 90;
-    this.maxDistance = 200;
-    this.treeScale = 0.015;
+    this.performanceLevel = getDevicePerformanceLevel();
+
+    if (this.performanceLevel === 'low') {
+      this.spacing = 120;
+      this.maxDistance = 150;
+      this.treeScale = 0.012;
+    } else if (this.performanceLevel === 'medium') {
+      this.spacing = 100;
+      this.maxDistance = 180;
+      this.treeScale = 0.013;
+    } else {
+      this.spacing = 90;
+      this.maxDistance = 200;
+      this.treeScale = 0.015;
+    }
 
     this.init();
   }
