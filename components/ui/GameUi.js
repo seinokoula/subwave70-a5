@@ -27,18 +27,26 @@ export default function GameUI({ score, gameOver, onReset, onMoveLeft, onMoveRig
         </div>
       )}
       <div className="absolute left-0 right-0 flex justify-between px-10 pointer-events-auto bottom-20">
-        <button
-          className="flex items-center justify-center w-20 h-20 text-3xl text-[#00ffff] rounded-full bg-black/70 border-2 border-[#ff00ff] hover:bg-black/90 transition-all shadow-[0_0_15px_rgba(255,0,255,0.5)] hover:shadow-[0_0_20px_rgba(255,0,255,0.8)]"
-          onClick={onMoveLeft}
-        >
-          ←
-        </button>
-        <button
-          className="flex items-center justify-center w-20 h-20 text-3xl text-[#00ffff] rounded-full bg-black/70 border-2 border-[#ff00ff] hover:bg-black/90 transition-all shadow-[0_0_15px_rgba(255,0,255,0.5)] hover:shadow-[0_0_20px_rgba(255,0,255,0.8)]"
-          onClick={onMoveRight}
-        >
-          →
-        </button>
+        <div className="flex flex-col items-center gap-2">
+          <button
+            className="flex items-center justify-center w-20 h-20 text-3xl text-[#00ffff] rounded-full bg-black/70 border-2 border-[#ff00ff] hover:bg-black/90 active:bg-black active:scale-95 transition-all shadow-[0_0_15px_rgba(255,0,255,0.5)] hover:shadow-[0_0_20px_rgba(255,0,255,0.8)]"
+            onClick={onMoveLeft}
+            aria-label="Move Left"
+          >
+            ←
+          </button>
+          <span className="text-xs text-[#00ffff] font-bold">GAUCHE</span>
+        </div>
+        <div className="flex flex-col items-center gap-2">
+          <button
+            className="flex items-center justify-center w-20 h-20 text-3xl text-[#00ffff] rounded-full bg-black/70 border-2 border-[#ff00ff] hover:bg-black/90 active:bg-black active:scale-95 transition-all shadow-[0_0_15px_rgba(255,0,255,0.5)] hover:shadow-[0_0_20px_rgba(255,0,255,0.8)]"
+            onClick={onMoveRight}
+            aria-label="Move Right"
+          >
+            →
+          </button>
+          <span className="text-xs text-[#00ffff] font-bold">DROITE</span>
+        </div>
       </div>
       {gameOver && (
         <div className="absolute max-w-md p-6 text-center pointer-events-auto top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/80 border-2 border-[#ff00ff] rounded shadow-[0_0_20px_rgba(255,0,255,0.7)] backdrop-blur-sm">
