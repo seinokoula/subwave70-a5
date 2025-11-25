@@ -84,7 +84,9 @@ export default class ObstacleManager {
             },
             undefined,
             (error) => {
-              console.error(`Erreur lors du chargement du modèle ${type.type}:`, error);
+              if (process.env.NODE_ENV === 'development') {
+                console.error(`Error loading model ${type.type}:`, error);
+              }
               reject(error);
             }
           );
@@ -93,9 +95,10 @@ export default class ObstacleManager {
 
     try {
       await Promise.all(modelPromises);
-
     } catch (error) {
-      console.error("Erreur lors du chargement des modèles:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Error loading models:", error);
+      }
     }
   }
 
@@ -184,13 +187,22 @@ export default class ObstacleManager {
     obstacle.castShadow = true;
     obstacle.receiveShadow = true;
 
+    const edgeLines = [];
+    obstacle.traverse((child) => {
+      if (child instanceof THREE.LineSegments) {
+        edgeLines.push(child);
+      }
+    });
+
     this.scene.add(obstacle);
     this.obstacles.push({
       mesh: obstacle,
       type: obstacleType.type,
       lane: lane,
       active: true,
-      pulseTime: Date.now()
+      pulseTime: Date.now(),
+      edgeLines: edgeLines,
+      baseColor: new THREE.Color(obstacleType.color)
     });
 
   }
@@ -217,24 +229,19 @@ export default class ObstacleManager {
 
         obstacle.mesh.position.y = 0.25 + Math.sin(Date.now() * 0.005) * 0.1;
 
-        obstacle.mesh.traverse((child) => {
-          if (child instanceof THREE.LineSegments) {
+        if (obstacle.edgeLines && obstacle.edgeLines.length > 0) {
+          const time = Date.now() * 0.001;
+          const t = (Math.sin(time * 5) + 1) * 0.5;
 
-            const time = Date.now() * 0.001;
-            const color = new THREE.Color();
-
-            const obstacleColor = new THREE.Color(obstacle.mesh.material ? obstacle.mesh.material.color : 0xFFFFFF);
-            const t = (Math.sin(time * 5) + 1) / 2;
-
-            color.setRGB(
-              1.0 * (1 - t) + obstacleColor.r * t,
-              1.0 * (1 - t) + obstacleColor.g * t,
-              1.0 * (1 - t) + obstacleColor.b * t
+          for (let j = 0; j < obstacle.edgeLines.length; j++) {
+            const edgeLine = obstacle.edgeLines[j];
+            edgeLine.material.color.setRGB(
+              1.0 * (1 - t) + obstacle.baseColor.r * t,
+              1.0 * (1 - t) + obstacle.baseColor.g * t,
+              1.0 * (1 - t) + obstacle.baseColor.b * t
             );
-
-            child.material.color = color;
           }
-        });
+        }
 
         if (obstacle.mesh.position.z < -10) {
           this.scene.remove(obstacle.mesh);

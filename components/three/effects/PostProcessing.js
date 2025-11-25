@@ -16,10 +16,12 @@ export default class PostProcessingManager {
     this.maxBloomIntensity = 0.9;
     this.bloomFadeSpeed = 0.001;
 
+    this.resizeHandler = this.handleResize.bind(this);
+
     this.setupPasses();
     this.handleResize();
 
-    window.addEventListener('resize', this.handleResize.bind(this));
+    window.addEventListener('resize', this.resizeHandler);
   }
 
   setupPasses() {
@@ -103,6 +105,24 @@ export default class PostProcessingManager {
     if (this.composer) {
       this.update();
       this.composer.render();
+    }
+  }
+
+  dispose() {
+    window.removeEventListener('resize', this.resizeHandler);
+
+    if (this.composer) {
+      this.composer.passes.forEach(pass => {
+        if (pass.dispose) {
+          pass.dispose();
+        }
+        if (pass.material) {
+          pass.material.dispose();
+        }
+        if (pass.fsQuad && pass.fsQuad.material) {
+          pass.fsQuad.material.dispose();
+        }
+      });
     }
   }
 }

@@ -158,11 +158,55 @@ export default function useThree(containerRef, preloadedResources = {}, isReady 
         cancelAnimationFrame(animationFrameRef.current);
       }
 
+      if (postProcessingRef.current && postProcessingRef.current.dispose) {
+        postProcessingRef.current.dispose();
+      }
+
+      if (obstaclesRef.current) {
+        const obstacles = obstaclesRef.current.obstacles || [];
+        obstacles.forEach(obstacle => {
+          if (obstacle.mesh) {
+            obstacle.mesh.traverse((child) => {
+              if (child.geometry) child.geometry.dispose();
+              if (child.material) {
+                if (Array.isArray(child.material)) {
+                  child.material.forEach(mat => mat.dispose());
+                } else {
+                  child.material.dispose();
+                }
+              }
+            });
+            if (sceneRef.current) {
+              sceneRef.current.get().remove(obstacle.mesh);
+            }
+          }
+        });
+      }
+
+      if (sceneRef.current && sceneRef.current.get()) {
+        sceneRef.current.get().traverse((object) => {
+          if (object.geometry) {
+            object.geometry.dispose();
+          }
+          if (object.material) {
+            if (Array.isArray(object.material)) {
+              object.material.forEach(material => {
+                if (material.map) material.map.dispose();
+                material.dispose();
+              });
+            } else {
+              if (object.material.map) object.material.map.dispose();
+              object.material.dispose();
+            }
+          }
+        });
+      }
+
       if (rendererRef.current) {
         rendererRef.current.dispose();
       }
 
-      if (cameraRef.current) {
+      if (cameraRef.current && cameraRef.current.dispose) {
         cameraRef.current.dispose();
       }
 

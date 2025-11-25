@@ -38,7 +38,9 @@ export default class Road {
 
       this.adjustRoadPosition();
     } catch (error) {
-      console.error("Erreur lors de l'initialisation de la route synthwave:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Error initializing road:", error);
+      }
     }
   }
 
@@ -126,34 +128,60 @@ export default class Road {
   }
 
   createLaneLines() {
-
     const leftLineX = -this.roadWidth / 3;
     const middleLineX = 0;
     const rightLineX = this.roadWidth / 3;
 
-    const laneMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00ffff,
-      transparent: true,
-      opacity: 0.9
-    });
+    const vertexShader = `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `;
+
+    const fragmentShader = `
+      uniform float fadeStart;
+      uniform float fadeEnd;
+      varying vec2 vUv;
+
+      void main() {
+        vec4 color = vec4(0.0, 1.0, 1.0, 1.0);
+        float fadeFactor = smoothstep(fadeStart, fadeEnd, vUv.y);
+        gl_FragColor = vec4(color.rgb, color.a * fadeFactor);
+      }
+    `;
+
+    const createLaneMaterial = () => {
+      return new THREE.ShaderMaterial({
+        uniforms: {
+          fadeStart: { value: 0.7 },
+          fadeEnd: { value: 1.0 }
+        },
+        vertexShader: vertexShader,
+        fragmentShader: fragmentShader,
+        transparent: true,
+        blending: THREE.AdditiveBlending
+      });
+    };
 
     this.laneLines = new THREE.Group();
     this.roadGroup.add(this.laneLines);
 
     const leftLineGeometry = new THREE.PlaneGeometry(0.15, this.horizonDistance * 1.2);
-    const leftLine = new THREE.Mesh(leftLineGeometry, laneMaterial);
+    const leftLine = new THREE.Mesh(leftLineGeometry, createLaneMaterial());
     leftLine.rotation.x = -Math.PI / 2;
     leftLine.position.set(leftLineX, 0.03, this.horizonDistance / 2);
     this.laneLines.add(leftLine);
 
     const middleLineGeometry = new THREE.PlaneGeometry(0.15, this.horizonDistance * 1.2);
-    const middleLine = new THREE.Mesh(middleLineGeometry, laneMaterial);
+    const middleLine = new THREE.Mesh(middleLineGeometry, createLaneMaterial());
     middleLine.rotation.x = -Math.PI / 2;
     middleLine.position.set(middleLineX, 0.03, this.horizonDistance / 2);
     this.laneLines.add(middleLine);
 
     const rightLineGeometry = new THREE.PlaneGeometry(0.15, this.horizonDistance * 1.2);
-    const rightLine = new THREE.Mesh(rightLineGeometry, laneMaterial);
+    const rightLine = new THREE.Mesh(rightLineGeometry, createLaneMaterial());
     rightLine.rotation.x = -Math.PI / 2;
     rightLine.position.set(rightLineX, 0.03, this.horizonDistance / 2);
     this.laneLines.add(rightLine);
@@ -192,60 +220,8 @@ export default class Road {
     }
 
     if (this.mainRoad && this.mainRoad.material.map) {
-
       this.mainRoad.material.map.offset.y += this.roadSpeed * 0.05;
       this.mainRoad.material.map.needsUpdate = true;
-    }
-
-    if (this.laneLines) {
-      this.laneLines.children.forEach(line => {
-
-        if (line.material) {
-
-          if (!line.material._isCustomized) {
-
-            line.material = line.material.clone();
-
-            const vertexShader = `
-            varying vec2 vUv;
-            void main() {
-              vUv = uv;
-              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-            }
-          `;
-
-            const fragmentShader = `
-            uniform sampler2D map;
-            uniform float fadeStart;
-            uniform float fadeEnd;
-            varying vec2 vUv;
-            
-            void main() {
-              vec4 color = vec4(0.0, 1.0, 1.0, 1.0); 
-              
-              
-              float fadeFactor = smoothstep(fadeStart, fadeEnd, vUv.y);
-              
-              
-              gl_FragColor = vec4(color.rgb, color.a * fadeFactor);
-            }
-          `;
-
-            line.material = new THREE.ShaderMaterial({
-              uniforms: {
-                fadeStart: { value: 0.7 },
-                fadeEnd: { value: 1.0 }
-              },
-              vertexShader: vertexShader,
-              fragmentShader: fragmentShader,
-              transparent: true,
-              blending: THREE.AdditiveBlending
-            });
-
-            line.material._isCustomized = true;
-          }
-        }
-      });
     }
   }
 

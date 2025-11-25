@@ -17,7 +17,9 @@ export default class PalmTrees {
 
   init() {
     if (!this.preloadedModel) {
-      console.warn("Modèle de palmier non chargé");
+      if (process.env.NODE_ENV === 'development') {
+        console.warn("Palm tree model not loaded");
+      }
       return;
     }
 

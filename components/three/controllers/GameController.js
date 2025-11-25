@@ -15,6 +15,14 @@ export default class GameController {
     this.onGameOver = null;
     this.onScoreUpdate = null;
 
+    this.obstacleSizes = {
+      rock: 1.1,
+      police_officer: 1.2,
+      barrier: 0.4
+    };
+    this.defaultObstacleSize = 0.2;
+    this.carZSize = 1.2;
+
     setTimeout(() => {
       if (!this.gameStarted) {
         this.startGame();
@@ -27,7 +35,6 @@ export default class GameController {
   }
 
   startGame() {
-    console.log("Jeu démarré!");
     this.gameStarted = true;
     this.score = 0;
     this.gameOver = false;
@@ -56,36 +63,20 @@ export default class GameController {
 
 
   checkCollisions() {
-    if (!this.gameStarted || this.gameOver) return;
+    if (!this.gameStarted || this.gameOver) return false;
 
     const carLane = this.car.currentLane;
+    const carZ = this.car.position.z;
+    const carHalfSize = this.carZSize * 0.5;
 
     for (const obstacle of this.obstacles.getActiveObstacles()) {
+      if (carLane !== obstacle.lane) continue;
 
-      const obstacleLane = obstacle.lane;
+      const zDistance = Math.abs(carZ - obstacle.mesh.position.z);
+      const obstacleZSize = this.obstacleSizes[obstacle.type] || this.defaultObstacleSize;
+      const collisionThreshold = carHalfSize + obstacleZSize * 0.5;
 
-      const zDistance = Math.abs(this.car.position.z - obstacle.mesh.position.z);
-
-      const carZSize = 1.2;
-
-      let obstacleZSize = 0.2;
-
-      if (obstacle.type === 'rock') {
-        obstacleZSize = 1.1;
-      } else if (obstacle.type === 'police_officer') {
-        obstacleZSize = 1.2;
-      } else if (obstacle.type === 'barrier') {
-        obstacleZSize = 0.4;
-      }
-
-      const zOverlap = (carZSize / 2 + obstacleZSize / 2) > zDistance;
-
-      if (carLane === obstacleLane && zOverlap) {
-        console.log("Collision détectée avec obstacle:",
-          obstacle.type,
-          "à la position:", obstacle.mesh.position,
-          "voie:", obstacleLane);
-
+      if (zDistance < collisionThreshold) {
         this.collisionDetected = true;
         this.endGame();
         return true;
