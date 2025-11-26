@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
-import { getDevicePerformanceLevel } from '../../utils/deviceDetection';
+import { getDevicePerformanceLevel } from '../../../utils/deviceDetection';
 
 export default class ObstacleManager {
   constructor(scene, road, preloadedModels = {}) {

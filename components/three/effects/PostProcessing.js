@@ -4,7 +4,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
-import { getDevicePerformanceLevel } from '../../utils/deviceDetection';
+import { getDevicePerformanceLevel } from '../../../utils/deviceDetection';
 
 export default class PostProcessingManager {
   constructor(renderer, scene, camera) {

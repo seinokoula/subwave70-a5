@@ -1,6 +1,6 @@
 
 import * as THREE from 'three';
-import { getDevicePerformanceLevel } from '../../utils/deviceDetection';
+import { getDevicePerformanceLevel } from '../../../utils/deviceDetection';
 
 export default class PalmTrees {
   constructor(scene, road, preloadedModel = null) {
