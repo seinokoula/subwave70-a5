@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@react-three/postprocessing": "^3.0.4",
-    "next": "15.2.4",
+    "next": "15.2.8",
     "raw-loader": "^4.0.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
