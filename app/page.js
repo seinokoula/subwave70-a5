@@ -2,7 +2,6 @@
 
 import { useRef, useEffect, useState } from 'react';
 import useThree from '@/hooks/useThree';
-import useKeyboardControls from '@/hooks/useKeyboardControls';
 import useResourceLoader from '@/hooks/useResourceLoader';
 import GameUI from '@/components/ui/GameUi';
 import InsuranceInfo from '@/components/ui/InsuranceInfo';
@@ -13,8 +12,6 @@ export default function Home() {
   const { isLoading, progress, resources } = useResourceLoader();
   const [gameInitialized, setGameInitialized] = useState(false);
   const { score, gameOver, resetGame, moveCarLeft, moveCarRight } = useThree(containerRef, resources, !isLoading);
-
-  const keys = useKeyboardControls();
 
   useEffect(() => {
     if (!isLoading && !gameInitialized) {
@@ -32,28 +29,43 @@ export default function Home() {
     const handleKeyDown = (e) => {
       if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'q', 'Q', 'd', 'D'].includes(e.key)) {
         e.preventDefault();
-      }
-    };
 
-    const handleGameControl = (e) => {
-      if (e.detail.pressed) {
-        if (e.detail.action === 'ArrowLeft' || e.detail.action === 'q' || e.detail.action === 'Q') {
-          console.log('Moving car left from event');
-          moveCarRight();
-        } else if (e.detail.action === 'ArrowRight' || e.detail.action === 'd' || e.detail.action === 'D') {
-          console.log('Moving car right from event');
+        if (e.key === 'ArrowLeft' || e.key === 'q' || e.key === 'Q') {
           moveCarLeft();
+        } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+          moveCarRight();
         }
       }
     };
 
+    const handleTouch = (e) => {
+      if (!containerRef.current || e.target.tagName === 'BUTTON') return;
+
+      const touch = e.touches[0] || e.changedTouches[0];
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const touchX = touch.clientX;
+      const screenCenterX = containerRect.left + containerRect.width / 2;
+
+      if (touchX < screenCenterX) {
+        moveCarLeft();
+      } else {
+        moveCarRight();
+      }
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('game-control', handleGameControl);
+    if (containerRef.current) {
+      containerRef.current.addEventListener('touchstart', handleTouch);
+    }
+
+    const currentContainer = containerRef.current;
 
     return () => {
       document.removeEventListener('touchmove', preventDefault);
       window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('game-control', handleGameControl);
+      if (currentContainer) {
+        currentContainer.removeEventListener('touchstart', handleTouch);
+      }
     };
   }, [moveCarLeft, moveCarRight]);
 
@@ -70,8 +82,8 @@ export default function Home() {
           score={score}
           gameOver={gameOver}
           onReset={resetGame}
-          onMoveLeft={moveCarRight}
-          onMoveRight={moveCarLeft}
+          onMoveLeft={moveCarLeft}
+          onMoveRight={moveCarRight}
         />
 
         <InsuranceInfo />
