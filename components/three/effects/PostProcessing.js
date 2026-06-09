@@ -17,9 +17,11 @@ export default class PostProcessingManager {
     this.bloomFadeSpeed = 0.001;
 
     this.setupPasses();
+
+    this.handleResize = this.handleResize.bind(this);
     this.handleResize();
 
-    window.addEventListener('resize', this.handleResize.bind(this));
+    window.addEventListener('resize', this.handleResize);
   }
 
   setupPasses() {
@@ -64,13 +66,8 @@ export default class PostProcessingManager {
     });
     this.composer.addPass(scanlinePass);
 
-    const fxaaPass = new ShaderPass(FXAAShader);
-    fxaaPass.uniforms.resolution.value.set(
-      1 / window.innerWidth,
-      1 / window.innerHeight
-    );
-    this.composer.addPass(fxaaPass);
-
+    this.fxaaPass = new ShaderPass(FXAAShader);
+    this.composer.addPass(this.fxaaPass);
   }
 
   handleResize() {
@@ -79,12 +76,8 @@ export default class PostProcessingManager {
 
     this.composer.setSize(width, height);
 
-    const fxaaPass = this.composer.passes.find(
-      pass => pass.name === 'ShaderPass' && pass.material && pass.material.uniforms && pass.material.uniforms.resolution
-    );
-
-    if (fxaaPass) {
-      fxaaPass.uniforms.resolution.value.set(1 / width, 1 / height);
+    if (this.fxaaPass) {
+      this.fxaaPass.uniforms.resolution.value.set(1 / width, 1 / height);
     }
   }
 
@@ -104,5 +97,10 @@ export default class PostProcessingManager {
       this.update();
       this.composer.render();
     }
+  }
+
+  dispose() {
+    window.removeEventListener('resize', this.handleResize);
+    this.composer.dispose();
   }
 }

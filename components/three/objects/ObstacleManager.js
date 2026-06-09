@@ -19,27 +19,22 @@ export default class ObstacleManager {
     this.spawnDistance = 150;
     this.minSpawnInterval = 1000;
     this.maxSpawnInterval = 3000;
-    this.lastSpawnTime = 0;
+    this.spawnTimer = null;
 
     this.init();
   }
 
   async init() {
-
     if (this.preloadedModels && Object.keys(this.preloadedModels).length > 0) {
       for (const type of this.obstacleTypes) {
         if (type.modelPath && this.preloadedModels[type.type]) {
           this.models[type.type] = this.preloadedModels[type.type];
         }
       }
-
-      this.scheduleNextObstacle();
       return;
     }
 
     await this.loadModels();
-
-    this.scheduleNextObstacle();
   }
 
   async loadModels() {
@@ -52,39 +47,12 @@ export default class ObstacleManager {
           loader.load(
             type.modelPath,
             (obj) => {
-
-              obj.traverse((child) => {
-                if (child instanceof THREE.Mesh) {
-
-                  child.material = new THREE.MeshStandardMaterial({
-                    color: type.color,
-                    roughness: 0.3,
-                    metalness: 0.5,
-                    emissive: type.color,
-                    emissiveIntensity: 0.8
-                  });
-
-                  const edges = new THREE.EdgesGeometry(child.geometry);
-                  const line = new THREE.LineSegments(
-                    edges,
-                    new THREE.LineBasicMaterial({
-                      color: 0xFFFFFF,
-                      linewidth: 2
-                    })
-                  );
-                  child.add(line);
-
-                  child.castShadow = true;
-                  child.receiveShadow = true;
-                }
-              });
-
               this.models[type.type] = obj;
               resolve();
             },
             undefined,
             (error) => {
-              console.error(`Erreur lors du chargement du modèle ${type.type}:`, error);
+              console.error(`Failed to load obstacle model "${type.type}":`, error);
               reject(error);
             }
           );
@@ -93,47 +61,49 @@ export default class ObstacleManager {
 
     try {
       await Promise.all(modelPromises);
-
     } catch (error) {
-      console.error("Erreur lors du chargement des modèles:", error);
+      console.error('Some obstacle models failed to load, falling back to boxes:', error);
+    }
+  }
+
+  startSpawning() {
+    this.stopSpawning();
+    this.scheduleNextObstacle();
+  }
+
+  stopSpawning() {
+    if (this.spawnTimer) {
+      clearTimeout(this.spawnTimer);
+      this.spawnTimer = null;
     }
   }
 
   scheduleNextObstacle() {
-    const now = Date.now();
-    const timeSinceLastSpawn = now - this.lastSpawnTime;
+    const delay = this.minSpawnInterval +
+      Math.random() * (this.maxSpawnInterval - this.minSpawnInterval);
 
-    if (timeSinceLastSpawn >= this.minSpawnInterval) {
-      const randomDelay = Math.random() * (this.maxSpawnInterval - this.minSpawnInterval);
-      setTimeout(() => {
-        this.spawnObstacle();
-        this.scheduleNextObstacle();
-      }, randomDelay);
-
-      this.lastSpawnTime = now;
-    } else {
-      setTimeout(() => this.scheduleNextObstacle(), 100);
-    }
+    this.spawnTimer = setTimeout(() => {
+      this.spawnObstacle();
+      this.scheduleNextObstacle();
+    }, delay);
   }
 
   spawnObstacle() {
-
     const obstacleType = this.obstacleTypes[Math.floor(Math.random() * this.obstacleTypes.length)];
 
     const lane = Math.floor(Math.random() * 3);
     const xPosition = this.lanePositions[lane];
 
     let obstacle;
+    let ownsGeometry = false;
 
     if (obstacleType.modelPath && this.models[obstacleType.type]) {
-
       obstacle = this.models[obstacleType.type].clone();
 
       obstacle.scale.set(...obstacleType.scale);
 
       obstacle.traverse((child) => {
         if (child instanceof THREE.Mesh) {
-
           child.material = new THREE.MeshStandardMaterial({
             color: obstacleType.color,
             roughness: 0.3,
@@ -152,6 +122,7 @@ export default class ObstacleManager {
         }
       });
     } else {
+      ownsGeometry = true;
 
       const geometry = new THREE.BoxGeometry(0.8, 0.5, 0.25);
       const material = new THREE.MeshStandardMaterial({
@@ -190,28 +161,23 @@ export default class ObstacleManager {
       type: obstacleType.type,
       lane: lane,
       active: true,
+      ownsGeometry: ownsGeometry,
       pulseTime: Date.now()
     });
-
   }
 
   update() {
-
     for (let i = this.obstacles.length - 1; i >= 0; i--) {
       const obstacle = this.obstacles[i];
 
       if (obstacle.active) {
-
         obstacle.mesh.position.z -= this.road.roadSpeed;
 
         if (obstacle.type === 'police_officer') {
-
           obstacle.mesh.rotation.y = Math.sin(Date.now() * 0.003) * 0.2;
         } else if (obstacle.type === 'barrier') {
-
           obstacle.mesh.rotation.x = Math.sin(Date.now() * 0.005) * 0.1;
         } else if (obstacle.type === 'rock') {
-
           obstacle.mesh.rotation.y += 0.01;
         }
 
@@ -219,7 +185,6 @@ export default class ObstacleManager {
 
         obstacle.mesh.traverse((child) => {
           if (child instanceof THREE.LineSegments) {
-
             const time = Date.now() * 0.001;
             const color = new THREE.Color();
 
@@ -237,8 +202,7 @@ export default class ObstacleManager {
         });
 
         if (obstacle.mesh.position.z < -10) {
-          this.scene.remove(obstacle.mesh);
-          this.obstacles.splice(i, 1);
+          this.removeObstacle(i);
         }
       }
     }
@@ -252,11 +216,39 @@ export default class ObstacleManager {
     const obstacle = this.obstacles[index];
     if (obstacle) {
       this.scene.remove(obstacle.mesh);
+      this.disposeObstacle(obstacle);
       this.obstacles.splice(index, 1);
+    }
+  }
+
+  // Geometries cloned from a shared template must NOT be disposed; only the
+  // per-spawn materials, edge lines, and fallback-box geometry are owned here.
+  disposeObstacle(obstacle) {
+    obstacle.mesh.traverse((child) => {
+      if (child.isLineSegments) {
+        child.geometry.dispose();
+        child.material.dispose();
+      } else if (child.isMesh) {
+        if (obstacle.ownsGeometry) {
+          child.geometry.dispose();
+        }
+        child.material.dispose();
+      }
+    });
+  }
+
+  clearObstacles() {
+    for (let i = this.obstacles.length - 1; i >= 0; i--) {
+      this.removeObstacle(i);
     }
   }
 
   updateLanePositions(positions) {
     this.lanePositions = positions;
+  }
+
+  dispose() {
+    this.stopSpawning();
+    this.clearObstacles();
   }
 }

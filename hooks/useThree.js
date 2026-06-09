@@ -4,9 +4,9 @@ import SceneManager from '../components/three/core/Scene';
 import RendererManager from '../components/three/core/Renderer';
 import CameraManager from '../components/three/core/Camera';
 import LightsManager from '../components/three/core/Lights';
-import Car from '../components/three/objects/Cars';
+import Car from '../components/three/objects/Car';
 import Road from '../components/three/objects/Road';
-import ObstacleManager from '../components/three/objects/Obstacle';
+import ObstacleManager from '../components/three/objects/ObstacleManager';
 import Streetlight from '../components/three/objects/StreetLight';
 import PalmTrees from '../components/three/objects/PalmTrees';
 import SynthwaveMountains from '../components/three/objects/SynthwaveMountains';
@@ -148,6 +148,7 @@ export default function useThree(containerRef, preloadedResources = {}, isReady 
         animationFrameRef.current = requestAnimationFrame(animate);
 
       } catch (error) {
+        console.error('Failed to initialize the game scene:', error);
       }
     };
 
@@ -156,6 +157,26 @@ export default function useThree(containerRef, preloadedResources = {}, isReady 
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
+      }
+
+      if (gameControllerRef.current) {
+        gameControllerRef.current.dispose();
+      }
+
+      if (obstaclesRef.current) {
+        obstaclesRef.current.dispose();
+      }
+
+      if (carRef.current) {
+        carRef.current.dispose();
+      }
+
+      if (streetlightsRef.current) {
+        streetlightsRef.current.dispose();
+      }
+
+      if (postProcessingRef.current) {
+        postProcessingRef.current.dispose();
       }
 
       if (rendererRef.current) {

@@ -1,33 +1,28 @@
 "use client";
 
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect } from 'react';
 import useThree from '@/hooks/useThree';
 import useKeyboardControls from '@/hooks/useKeyboardControls';
 import useResourceLoader from '@/hooks/useResourceLoader';
 import GameUI from '@/components/ui/GameUi';
 import InsuranceInfo from '@/components/ui/InsuranceInfo';
-import LoadingScreen from '@/components/ui/LoadingSreen';
+import LoadingScreen from '@/components/ui/LoadingScreen';
 
 export default function Home() {
   const containerRef = useRef(null);
   const { isLoading, progress, resources } = useResourceLoader();
-  const [gameInitialized, setGameInitialized] = useState(false);
   const { score, gameOver, resetGame, moveCarLeft, moveCarRight } = useThree(containerRef, resources, !isLoading);
 
-  const keys = useKeyboardControls();
+  useKeyboardControls();
 
   useEffect(() => {
-    if (!isLoading && !gameInitialized) {
-      setGameInitialized(true);
-    }
-  }, [isLoading, gameInitialized]);
-
-  useEffect(() => {
+    const container = containerRef.current;
     const preventDefault = (e) => {
       e.preventDefault();
     };
 
-    document.addEventListener('touchmove', preventDefault, { passive: false });
+    // Only block touch scrolling over the game canvas; the page below it must stay scrollable.
+    container?.addEventListener('touchmove', preventDefault, { passive: false });
 
     const handleKeyDown = (e) => {
       if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'q', 'Q', 'd', 'D'].includes(e.key)) {
@@ -35,15 +30,16 @@ export default function Home() {
       }
     };
 
+    // "Left" input drives moveCarRight (and vice versa) on purpose: the camera
+    // faces down +Z, so the scene's X axis is mirrored relative to the player.
     const handleGameControl = (e) => {
-      if (e.detail.pressed) {
-        if (e.detail.action === 'ArrowLeft' || e.detail.action === 'q' || e.detail.action === 'Q') {
-          console.log('Moving car left from event');
-          moveCarRight();
-        } else if (e.detail.action === 'ArrowRight' || e.detail.action === 'd' || e.detail.action === 'D') {
-          console.log('Moving car right from event');
-          moveCarLeft();
-        }
+      if (!e.detail.pressed) return;
+
+      const action = e.detail.action.toLowerCase();
+      if (action === 'arrowleft' || action === 'q') {
+        moveCarRight();
+      } else if (action === 'arrowright' || action === 'd') {
+        moveCarLeft();
       }
     };
 
@@ -51,7 +47,7 @@ export default function Home() {
     window.addEventListener('game-control', handleGameControl);
 
     return () => {
-      document.removeEventListener('touchmove', preventDefault);
+      container?.removeEventListener('touchmove', preventDefault);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('game-control', handleGameControl);
     };
@@ -59,7 +55,6 @@ export default function Home() {
 
   return (
     <div className="flex flex-col w-full h-screen">
-      { }
       <LoadingScreen isLoading={isLoading} progress={progress} />
 
       <main className={`flex-1 flex flex-col transition-opacity duration-500 ${isLoading ? 'opacity-0' : 'opacity-100'}`}>

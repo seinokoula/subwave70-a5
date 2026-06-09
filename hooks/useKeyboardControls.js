@@ -1,42 +1,33 @@
 import { useEffect, useState } from 'react';
 
+const CONTROL_KEYS = ['ArrowLeft', 'ArrowRight', 'q', 'd', 'Q', 'D'];
+
 export default function useKeyboardControls() {
-  const [keys, setKeys] = useState({
-    ArrowLeft: false,
-    ArrowRight: false,
-    q: false,
-    d: false,
-    Q: false,
-    D: false,
-  });
+  const [keys, setKeys] = useState(() =>
+    Object.fromEntries(CONTROL_KEYS.map(key => [key, false]))
+  );
 
   useEffect(() => {
+    const dispatch = (key, pressed) => {
+      setKeys(prevKeys => ({
+        ...prevKeys,
+        [key]: pressed
+      }));
+
+      window.dispatchEvent(new CustomEvent('game-control', {
+        detail: { action: key, pressed }
+      }));
+    };
+
     const handleKeyDown = (event) => {
-
-      if (event.key in keys) {
-        setKeys(prevKeys => ({
-          ...prevKeys,
-          [event.key]: true
-        }));
-
-        const customEvent = new CustomEvent('game-control', {
-          detail: { action: event.key, pressed: true }
-        });
-        window.dispatchEvent(customEvent);
+      if (CONTROL_KEYS.includes(event.key)) {
+        dispatch(event.key, true);
       }
     };
 
     const handleKeyUp = (event) => {
-      if (event.key in keys) {
-        setKeys(prevKeys => ({
-          ...prevKeys,
-          [event.key]: false
-        }));
-
-        const customEvent = new CustomEvent('game-control', {
-          detail: { action: event.key, pressed: false }
-        });
-        window.dispatchEvent(customEvent);
+      if (CONTROL_KEYS.includes(event.key)) {
+        dispatch(event.key, false);
       }
     };
 
@@ -47,7 +38,7 @@ export default function useKeyboardControls() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [keys]);
+  }, []);
 
   return keys;
 }

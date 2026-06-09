@@ -39,5 +39,7 @@ export default class RendererManager {
   dispose() {
     window.removeEventListener('resize', this.handleResize);
     this.renderer.dispose();
+    // Without this, React strict-mode remounts stack a second canvas in the container.
+    this.renderer.domElement.remove();
   }
 }

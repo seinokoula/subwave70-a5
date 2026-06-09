@@ -1,5 +1,3 @@
-import * as THREE from 'three';
-
 export default class GameController {
   constructor(car, road, obstacles, camera) {
     this.car = car;
@@ -15,19 +13,19 @@ export default class GameController {
     this.onGameOver = null;
     this.onScoreUpdate = null;
 
-    setTimeout(() => {
+    this.obstacleSpawnRateMin = 3000;
+    this.obstacleSpawnRateMax = 5000;
+    this.minSpawnRateLimit = 800;
+
+    this.startTimer = setTimeout(() => {
       if (!this.gameStarted) {
         this.startGame();
       }
     }, 1000);
-
-    this.obstacleSpawnRateMin = 3000;
-    this.obstacleSpawnRateMax = 5000;
-    this.minSpawnRateLimit = 800;
+    this.resetTimer = null;
   }
 
   startGame() {
-    console.log("Jeu démarré!");
     this.gameStarted = true;
     this.score = 0;
     this.gameOver = false;
@@ -39,6 +37,7 @@ export default class GameController {
     if (this.obstacles) {
       this.obstacles.minSpawnInterval = this.obstacleSpawnRateMin;
       this.obstacles.maxSpawnInterval = this.obstacleSpawnRateMax;
+      this.obstacles.startSpawning();
     }
 
     if (this.onScoreUpdate) {
@@ -49,19 +48,21 @@ export default class GameController {
   endGame() {
     this.gameOver = true;
 
+    if (this.obstacles) {
+      this.obstacles.stopSpawning();
+    }
+
     if (this.onGameOver) {
       this.onGameOver(this.score);
     }
   }
 
-
   checkCollisions() {
-    if (!this.gameStarted || this.gameOver) return;
+    if (!this.gameStarted || this.gameOver) return false;
 
     const carLane = this.car.currentLane;
 
     for (const obstacle of this.obstacles.getActiveObstacles()) {
-
       const obstacleLane = obstacle.lane;
 
       const zDistance = Math.abs(this.car.position.z - obstacle.mesh.position.z);
@@ -81,11 +82,6 @@ export default class GameController {
       const zOverlap = (carZSize / 2 + obstacleZSize / 2) > zDistance;
 
       if (carLane === obstacleLane && zOverlap) {
-        console.log("Collision détectée avec obstacle:",
-          obstacle.type,
-          "à la position:", obstacle.mesh.position,
-          "voie:", obstacleLane);
-
         this.collisionDetected = true;
         this.endGame();
         return true;
@@ -110,9 +106,7 @@ export default class GameController {
   }
 
   updateDifficulty() {
-
     if (this.obstacles) {
-
       const difficultyFactor = Math.min(this.score / 1000, 1);
 
       const newMinSpawnRate = this.obstacleSpawnRateMin -
@@ -137,24 +131,31 @@ export default class GameController {
       this.car.car.position.x = this.car.lanePositions[1];
     }
 
-    const obstacles = this.obstacles.getActiveObstacles();
-    for (let i = obstacles.length - 1; i >= 0; i--) {
-      this.obstacles.removeObstacle(i);
+    if (this.obstacles) {
+      this.obstacles.stopSpawning();
+      this.obstacles.clearObstacles();
     }
 
     if (this.road) {
       this.road.resetGame();
     }
 
-    if (this.obstacles) {
-      this.obstacles.minSpawnInterval = this.obstacleSpawnRateMin;
-      this.obstacles.maxSpawnInterval = this.obstacleSpawnRateMax;
+    if (this.resetTimer) {
+      clearTimeout(this.resetTimer);
     }
-
-    setTimeout(() => {
+    this.resetTimer = setTimeout(() => {
       if (!this.gameStarted) {
         this.startGame();
       }
     }, 500);
+  }
+
+  dispose() {
+    clearTimeout(this.startTimer);
+    clearTimeout(this.resetTimer);
+
+    if (this.obstacles) {
+      this.obstacles.stopSpawning();
+    }
   }
 }

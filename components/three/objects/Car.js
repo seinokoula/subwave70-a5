@@ -10,7 +10,6 @@ export default class Car {
     this.lanePositions = [-2.67, 0, 2.67];
     this.speed = 0.2;
     this.isMoving = false;
-    this.carModel = null;
     this.lastMoveTime = 0;
     this.moveDelay = 200;
     this.animationId = null;
@@ -19,19 +18,17 @@ export default class Car {
     this.init();
   }
 
-  async init() {
-
+  init() {
     this.createDefaultCar();
 
     if (this.preloadedModel) {
-      this.usePreloadedModel();
+      this.replaceWithModel(this.preloadedModel.clone());
     } else {
       this.loadCarModel();
     }
   }
 
   createDefaultCar() {
-
     this.car = new THREE.Group();
 
     const bodyGeometry = new THREE.BoxGeometry(0.5, 0.3, 1.0);
@@ -103,9 +100,7 @@ export default class Car {
 
     const headlightGeometry = new THREE.SphereGeometry(0.04, 8, 8);
     const headlightMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffcc00,
-      emissive: 0xffcc00,
-      emissiveIntensity: 1.0
+      color: 0xffcc00
     });
 
     const leftHeadlight = new THREE.Mesh(headlightGeometry, headlightMaterial);
@@ -116,9 +111,7 @@ export default class Car {
 
     const taillightGeometry = new THREE.SphereGeometry(0.04, 8, 8);
     const taillightMaterial = new THREE.MeshBasicMaterial({
-      color: 0xff00ff,
-      emissive: 0xff00ff,
-      emissiveIntensity: 1.0
+      color: 0xff00ff
     });
 
     const leftTaillight = new THREE.Mesh(taillightGeometry, taillightMaterial);
@@ -126,7 +119,6 @@ export default class Car {
 
     const rightTaillight = new THREE.Mesh(taillightGeometry, taillightMaterial);
     rightTaillight.position.set(0.2, 0.25, -0.5);
-
 
     const leftHeadlightLight = new THREE.PointLight(0xffcc00, 0.5, 2);
     leftHeadlightLight.position.copy(leftHeadlight.position);
@@ -163,9 +155,7 @@ export default class Car {
     this.position = this.car.position;
   }
 
-  usePreloadedModel() {
-    const obj = this.preloadedModel.clone();
-
+  replaceWithModel(obj) {
     obj.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         child.material = new THREE.MeshStandardMaterial({
@@ -206,47 +196,10 @@ export default class Car {
 
     loader.load(
       '/assets/car.obj',
-      (obj) => {
-
-        obj.traverse((child) => {
-          if (child instanceof THREE.Mesh) {
-            child.material = new THREE.MeshStandardMaterial({
-              color: 0x9900ff,
-              metalness: 0.7,
-              roughness: 0.3,
-              emissive: 0x6600cc,
-              emissiveIntensity: 0.2
-            });
-
-            const edges = new THREE.EdgesGeometry(child.geometry);
-            const line = new THREE.LineSegments(
-              edges,
-              new THREE.LineBasicMaterial({ color: 0x00ffff })
-            );
-            child.add(line);
-
-            child.castShadow = true;
-            child.receiveShadow = true;
-          }
-        });
-
-        obj.scale.set(0.01, 0.01, 0.01);
-        obj.rotation.y = Math.PI;
-
-        if (this.car) {
-          const currentPosition = this.car.position.clone();
-          this.scene.remove(this.car);
-          this.car = obj;
-          this.car.position.copy(currentPosition);
-          this.scene.add(this.car);
-          this.position = this.car.position;
-        }
-      },
-      (xhr) => {
-        console.log((xhr.loaded / xhr.total * 100) + '% chargé');
-      },
+      (obj) => this.replaceWithModel(obj),
+      undefined,
       (error) => {
-        console.error('Erreur lors du chargement du modèle de voiture:', error);
+        console.error('Failed to load car model, keeping placeholder car:', error);
       }
     );
   }
@@ -259,111 +212,62 @@ export default class Car {
     }
   }
 
-  moveLeft() {
-
+  moveToLane(direction) {
     const now = Date.now();
     if (now - this.lastMoveTime < this.moveDelay) {
       return;
     }
 
-    if (this.currentLane > 0 && !this.isMoving) {
-      this.isMoving = true;
-      this.currentLane--;
+    const targetLane = this.currentLane + direction;
+    if (targetLane < 0 || targetLane >= this.lanePositions.length || this.isMoving) {
+      return;
+    }
 
-      if (this.animationId) {
-        cancelAnimationFrame(this.animationId);
+    this.isMoving = true;
+    this.currentLane = targetLane;
+    this.lastMoveTime = now;
+
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+    }
+
+    const startX = this.car.position.x;
+    const targetX = this.lanePositions[this.currentLane];
+    const duration = 300;
+    const startTime = Date.now();
+
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      const easeProgress = progress < 0.5
+        ? 4 * progress * progress * progress
+        : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+      if (this.car) {
+        this.car.position.x = startX + (targetX - startX) * easeProgress;
       }
 
-      const startX = this.car.position.x;
-      const targetX = this.lanePositions[this.currentLane];
-      const duration = 300;
-      const startTime = Date.now();
-
-      const animate = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-
-        const easeProgress = progress < 0.5
-          ? 4 * progress * progress * progress
-          : 1 - Math.pow(-2 * progress + 2, 3) / 2;
-
+      if (progress < 1) {
+        this.animationId = requestAnimationFrame(animate);
+      } else {
         if (this.car) {
-          this.car.position.x = startX + (targetX - startX) * easeProgress;
+          this.car.position.x = targetX;
         }
+        this.isMoving = false;
+        this.animationId = null;
+      }
+    };
 
-        if (progress < 1) {
-          this.animationId = requestAnimationFrame(animate);
-        } else {
+    this.animationId = requestAnimationFrame(animate);
+  }
 
-          if (this.car) {
-            this.car.position.x = targetX;
-            console.log("Car position updated to", this.car.position.x);
-          }
-          this.isMoving = false;
-          this.animationId = null;
-        }
-      };
-
-      this.animationId = requestAnimationFrame(animate);
-      this.lastMoveTime = now;
-    } else {
-      console.log("Cannot move left: currentLane =", this.currentLane, "isMoving =", this.isMoving);
-    }
+  moveLeft() {
+    this.moveToLane(-1);
   }
 
   moveRight() {
-    console.log("moveRight called, current lane:", this.currentLane);
-
-    const now = Date.now();
-    if (now - this.lastMoveTime < this.moveDelay) {
-      console.log("Move rejected: too soon");
-      return;
-    }
-
-    if (this.currentLane < 2 && !this.isMoving) {
-      console.log("Moving right to lane", this.currentLane + 1);
-      this.isMoving = true;
-      this.currentLane++;
-
-      if (this.animationId) {
-        cancelAnimationFrame(this.animationId);
-      }
-
-      const startX = this.car.position.x;
-      const targetX = this.lanePositions[this.currentLane];
-      const duration = 300;
-      const startTime = Date.now();
-
-      const animate = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-
-        const easeProgress = progress < 0.5
-          ? 4 * progress * progress * progress
-          : 1 - Math.pow(-2 * progress + 2, 3) / 2;
-
-        if (this.car) {
-          this.car.position.x = startX + (targetX - startX) * easeProgress;
-        }
-
-        if (progress < 1) {
-          this.animationId = requestAnimationFrame(animate);
-        } else {
-
-          if (this.car) {
-            this.car.position.x = targetX;
-            console.log("Car position updated to", this.car.position.x);
-          }
-          this.isMoving = false;
-          this.animationId = null;
-        }
-      };
-
-      this.animationId = requestAnimationFrame(animate);
-      this.lastMoveTime = now;
-    } else {
-      console.log("Cannot move right: currentLane =", this.currentLane, "isMoving =", this.isMoving);
-    }
+    this.moveToLane(1);
   }
 
   getBoundingBox() {
@@ -376,6 +280,13 @@ export default class Car {
       this.position = this.car.position;
 
       this.car.rotation.z = Math.sin(Date.now() * 0.003) * 0.02;
+    }
+  }
+
+  dispose() {
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
     }
   }
 }

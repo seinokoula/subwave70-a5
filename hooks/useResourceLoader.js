@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
-import * as THREE from 'three';
 
 export default function useResourceLoader() {
   const [isLoading, setIsLoading] = useState(true);
@@ -78,6 +77,7 @@ export default function useResourceLoader() {
           updateProgress(loadedItems, totalItems);
 
         } catch (error) {
+          console.warn(`Failed to load model "${model.key}", the game will use a fallback:`, error);
           loadedItems++;
           updateProgress(loadedItems, totalItems);
         }

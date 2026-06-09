@@ -38,7 +38,7 @@ export default class Road {
 
       this.adjustRoadPosition();
     } catch (error) {
-      console.error("Erreur lors de l'initialisation de la route synthwave:", error);
+      console.error('Failed to initialize the road:', error);
     }
   }
 
@@ -131,10 +131,31 @@ export default class Road {
     const middleLineX = 0;
     const rightLineX = this.roadWidth / 3;
 
-    const laneMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00ffff,
+    const laneMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        fadeStart: { value: 0.7 },
+        fadeEnd: { value: 1.0 }
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float fadeStart;
+        uniform float fadeEnd;
+        varying vec2 vUv;
+
+        void main() {
+          vec4 color = vec4(0.0, 1.0, 1.0, 1.0);
+          float fadeFactor = smoothstep(fadeStart, fadeEnd, vUv.y);
+          gl_FragColor = vec4(color.rgb, color.a * fadeFactor);
+        }
+      `,
       transparent: true,
-      opacity: 0.9
+      blending: THREE.AdditiveBlending
     });
 
     this.laneLines = new THREE.Group();
@@ -192,60 +213,7 @@ export default class Road {
     }
 
     if (this.mainRoad && this.mainRoad.material.map) {
-
       this.mainRoad.material.map.offset.y += this.roadSpeed * 0.05;
-      this.mainRoad.material.map.needsUpdate = true;
-    }
-
-    if (this.laneLines) {
-      this.laneLines.children.forEach(line => {
-
-        if (line.material) {
-
-          if (!line.material._isCustomized) {
-
-            line.material = line.material.clone();
-
-            const vertexShader = `
-            varying vec2 vUv;
-            void main() {
-              vUv = uv;
-              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-            }
-          `;
-
-            const fragmentShader = `
-            uniform sampler2D map;
-            uniform float fadeStart;
-            uniform float fadeEnd;
-            varying vec2 vUv;
-            
-            void main() {
-              vec4 color = vec4(0.0, 1.0, 1.0, 1.0); 
-              
-              
-              float fadeFactor = smoothstep(fadeStart, fadeEnd, vUv.y);
-              
-              
-              gl_FragColor = vec4(color.rgb, color.a * fadeFactor);
-            }
-          `;
-
-            line.material = new THREE.ShaderMaterial({
-              uniforms: {
-                fadeStart: { value: 0.7 },
-                fadeEnd: { value: 1.0 }
-              },
-              vertexShader: vertexShader,
-              fragmentShader: fragmentShader,
-              transparent: true,
-              blending: THREE.AdditiveBlending
-            });
-
-            line.material._isCustomized = true;
-          }
-        }
-      });
     }
   }
 

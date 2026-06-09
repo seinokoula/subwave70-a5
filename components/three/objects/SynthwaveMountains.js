@@ -5,6 +5,9 @@ export default class SynthwaveMountains {
     this.scene = scene;
     this.road = road || { roadWidth: 8, roadSpeed: 0.3 };
     this.mountainDepth = 300;
+    // The camera sits at z=-5; start the planes well behind it so the ground
+    // stays continuous in the lower screen corners.
+    this.mountainStart = -40;
     this.mountainHeight = 30;
     this.mountainExtent = 250;
     this.gridDensityX = 40;
@@ -45,9 +48,9 @@ export default class SynthwaveMountains {
     geometry.rotateX(-Math.PI / 2);
 
     if (side === 'left') {
-      geometry.translate(roadEdge - this.mountainExtent / 2, 0, this.mountainDepth / 2);
+      geometry.translate(roadEdge - this.mountainExtent / 2, 0, this.mountainDepth / 2 + this.mountainStart);
     } else {
-      geometry.translate(roadEdge + this.mountainExtent / 2, 0, this.mountainDepth / 2);
+      geometry.translate(roadEdge + this.mountainExtent / 2, 0, this.mountainDepth / 2 + this.mountainStart);
     }
 
     const positions = geometry.attributes.position.array;
@@ -65,7 +68,7 @@ export default class SynthwaveMountains {
         distanceFromRoad = Math.abs((x - roadEdge) / this.mountainExtent);
       }
 
-      const depthFactor = z / this.mountainDepth;
+      const depthFactor = (z - this.mountainStart) / this.mountainDepth;
 
       const profileIndex = Math.min(Math.floor(distanceFromRoad * mountainProfile.length), mountainProfile.length - 1);
       let height = mountainProfile[profileIndex] * this.mountainHeight;
@@ -118,6 +121,10 @@ export default class SynthwaveMountains {
     const mountainGroup = new THREE.Group();
     mountainGroup.add(mountain);
     mountainGroup.add(edges);
+
+    // The flat strip near the road sits at the same height as the (wider) road
+    // plane; drop the whole mountain slightly so the two never z-fight.
+    mountainGroup.position.y = -0.05;
 
     this.scene.add(mountainGroup);
 
@@ -240,9 +247,7 @@ export default class SynthwaveMountains {
       const mountain = mountainGroup.children[0];
 
       if (mountain && mountain.material && mountain.material.map) {
-
         mountain.material.map.offset.y += speed * 0.05;
-        mountain.material.map.needsUpdate = true;
       }
     }
   }

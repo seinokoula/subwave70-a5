@@ -27,9 +27,13 @@ export default class Streetlight {
       this.createSynthwaveLight(-this.roadWidth / 2 - 1, i * this.spacing, 0x00ffff);
     }
 
-    setTimeout(() => {
+    this.glowTimer = setTimeout(() => {
       this.glowActive = true;
     }, 5000);
+  }
+
+  dispose() {
+    clearTimeout(this.glowTimer);
   }
 
   createSynthwaveLight(xPosition, zPosition, color) {
@@ -55,9 +59,7 @@ export default class Streetlight {
 
     const lampGeometry = new THREE.SphereGeometry(0.2, 16, 16);
     const lampMaterial = new THREE.MeshBasicMaterial({
-      color: color,
-      emissive: color,
-      emissiveIntensity: 1.0
+      color: color
     });
     const lamp = new THREE.Mesh(lampGeometry, lampMaterial);
     lamp.position.set(

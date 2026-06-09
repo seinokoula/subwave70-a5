@@ -30,12 +30,14 @@ export default function GameUI({ score, gameOver, onReset, onMoveLeft, onMoveRig
         <button
           className="flex items-center justify-center w-20 h-20 text-3xl text-[#00ffff] rounded-full bg-black/70 border-2 border-[#ff00ff] hover:bg-black/90 transition-all shadow-[0_0_15px_rgba(255,0,255,0.5)] hover:shadow-[0_0_20px_rgba(255,0,255,0.8)]"
           onClick={onMoveLeft}
+          aria-label="Aller à gauche"
         >
           ←
         </button>
         <button
           className="flex items-center justify-center w-20 h-20 text-3xl text-[#00ffff] rounded-full bg-black/70 border-2 border-[#ff00ff] hover:bg-black/90 transition-all shadow-[0_0_15px_rgba(255,0,255,0.5)] hover:shadow-[0_0_20px_rgba(255,0,255,0.8)]"
           onClick={onMoveRight}
+          aria-label="Aller à droite"
         >
           →
         </button>
